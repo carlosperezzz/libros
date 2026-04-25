@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proyecto Morriña · Estadística</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg2: #f5f5f7;
+    --border: #d2d2d7;
+    --text: #1d1d1f;
+    --muted: #6e6e73;
+    --accent: #0071e3;
+    --accent-hover: #0077ed;
+    --success: #34c759;
+    --warn: #ff9f0a;
+    --danger: #ff3b30;
+    --input-border: #c7c7cc;
+    --radius: 12px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "SF Pro Display", "SF Pro Text", BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  /* ── Nav ── */
+  nav {
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px; height: 52px;
+  }
+  .nav-brand { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; color: var(--text); }
+  .nav-brand span { color: var(--muted); font-weight: 400; }
+  .nav-right { display: flex; align-items: center; gap: 12px; }
+  .sync-status {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--muted);
+  }
+  .sync-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--border); transition: background 0.3s;
+  }
+  .sync-dot.ok  { background: var(--success); }
+  .sync-dot.err { background: var(--danger); }
+  .sync-dot.loading { background: var(--warn); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* ── Hero ── */
+  .hero {
+    text-align: center;
+    padding: 72px 28px 48px;
+    background: var(--bg);
+  }
+  .hero-label {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 12px;
+  }
+  .hero-title {
+    font-size: clamp(36px, 6vw, 64px);
+    font-weight: 700; letter-spacing: -1.5px; line-height: 1.05;
+    color: var(--text); margin-bottom: 12px;
+  }
+  .hero-sub { font-size: 17px; color: var(--muted); font-weight: 400; }
+
+  /* ── Container ── */
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 28px 80px; }
+
+  /* ── KPIs ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px; background: var(--border);
+    border-radius: var(--radius); overflow: hidden;
+    box-shadow: var(--shadow); margin-bottom: 48px;
+  }
+  .kpi {
+    background: var(--bg2); padding: 28px 20px;
+    text-align: center;
+  }
+  .kpi-val {
+    font-size: 36px; font-weight: 700;
+    letter-spacing: -1px; color: var(--text);
+    line-height: 1;
+  }
+  .kpi-lbl {
+    font-size: 12px; color: var(--muted);
+    margin-top: 6px; font-weight: 500;
+  }
+  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  /* ── Section header ── */
+  .section-header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px; margin-bottom: 0;
+  }
+  .section-title { font-size: 19px; font-weight: 600; letter-spacing: -0.3px; }
+  .section-note { font-size: 11px; color: var(--muted); }
+
+  /* ── Tabla ── */
+  .table-wrap {
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden; box-shadow: var(--shadow);
+    margin-bottom: 40px; overflow-x: auto;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead th {
+    background: var(--bg2);
+    padding: 12px 14px;
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--muted); text-align: center;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  thead th:first-child { text-align: left; }
+  .th-sep { border-left: 1px solid var(--border) !important; }
+
+  tbody tr { border-bottom: 1px solid var(--border); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover:not(.row-total) { background: #f9f9fb; }
+
+  td { padding: 12px 14px; text-align: center; vertical-align: middle; }
+  td:first-child { text-align: left; font-weight: 500; font-size: 15px; white-space: nowrap; }
+  td.th-sep { border-left: 1px solid var(--border); }
+
+  /* ── Inputs ── */
+  input[type=number] {
+    background: #fff;
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: inherit; font-size: 14px;
+    text-align: center;
+    width: 72px; padding: 6px 4px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    -moz-appearance: textfield;
+    outline: none;
+  }
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  input[type=number]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,113,227,0.18);
+  }
+  input.wide { width: 90px; }
+  input.narrow { width: 58px; }
+
+  /* ── Celdas calculadas ── */
+  .calc { color: var(--text); font-weight: 500; }
+  .total-val { color: var(--accent); font-weight: 700; }
+  .pct-cell { color: var(--muted); font-size: 13px; }
+
+  /* Barra */
+  .bar { width: 100%; height: 3px; background: #e5e5ea; border-radius: 99px; margin-top: 5px; overflow:hidden; }
+  .bar-fill { height:100%; background: var(--accent); border-radius:99px; transition: width .4s; }
+
+  /* ── Fila total ── */
+  .row-total { background: var(--bg2); border-top: 2px solid var(--border) !important; }
+  .row-total td { font-weight: 700; font-size: 14px; }
+  .row-total td:first-child { font-size: 12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+
+  /* ── Stars ── */
+  .stars { color: #ff9f0a; font-size: 10px; letter-spacing:1px; display:block; margin-top:3px; }
+
+  /* ── Divisores ── */
+  .divisors-wrap {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 40px;
+    box-shadow: var(--shadow);
+  }
+  .divisors-title {
+    font-size: 12px; font-weight: 600; letter-spacing:.05em;
+    text-transform:uppercase; color:var(--muted); margin-bottom:16px;
+  }
+  .divisors-grid { display:flex; flex-wrap:wrap; gap:16px; }
+  .div-item { display:flex; flex-direction:column; gap:5px; }
+  .div-label { font-size:11px; color:var(--muted); font-weight:500; }
+
+  /* ── GitHub config panel ── */
+  .gh-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    margin-bottom: 40px;
+    box-shadow: var(--shadow);
+  }
+  .gh-panel-title { font-size:15px; font-weight:600; margin-bottom:4px; }
+  .gh-panel-desc { font-size:13px; color:var(--muted); margin-bottom:20px; line-height:1.5; }
+  .gh-fields { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+  @media(max-width:600px){ .gh-fields { grid-template-columns:1fr; } }
+  .gh-field { display:flex; flex-direction:column; gap:5px; }
+  .gh-label { font-size:12px; font-weight:600; color:var(--muted); letter-spacing:.04em; text-transform:uppercase; }
+  .gh-input {
+    background:#fff; border:1px solid var(--input-border);
+    border-radius:8px; color:var(--text); font-family:inherit;
+    font-size:14px; padding:8px 12px; outline:none;
+    transition:border-color .15s, box-shadow .15s; width:100%;
+  }
+  .gh-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,113,227,.18); }
+  .gh-input[type=password] { letter-spacing:.1em; }
+  .gh-actions { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+
+  /* ── Botones ── */
+  .btn {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:9px 18px; border-radius:980px;
+    font-family:inherit; font-size:13px; font-weight:600;
+    cursor:pointer; border:none; transition:all .15s; white-space:nowrap;
+  }
+  .btn-primary { background:var(--accent); color:#fff; }
+  .btn-primary:hover { background:var(--accent-hover); }
+  .btn-secondary {
+    background:transparent; color:var(--accent);
+    border:1.5px solid var(--accent);
+  }
+  .btn-secondary:hover { background:rgba(0,113,227,.07); }
+  .btn-sm { padding:6px 14px; font-size:12px; }
+  .btn:disabled { opacity:.45; cursor:not-allowed; }
+
+  /* ── Footer ── */
+  .footer-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-top:8px; }
+  .footnote { font-size:11px; color:var(--muted); }
+  .toast {
+    position:fixed; bottom:28px; right:28px;
+    background: var(--text); color:#fff;
+    padding:12px 20px; border-radius:12px;
+    font-size:13px; font-weight:500;
+    box-shadow:0 4px 20px rgba(0,0,0,.2);
+    opacity:0; transform:translateY(8px);
+    transition:opacity .25s, transform .25s;
+    pointer-events:none; z-index:999;
+  }
+  .toast.show { opacity:1; transform:translateY(0); }
+
+  @media(max-width:700px){
+    .hero { padding:48px 20px 32px; }
+    .container { padding:0 16px 60px; }
+    nav { padding:0 16px; }
+    .kpi-val { font-size:28px; }
+    .gh-panel-desc { font-size:12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-brand">Proyecto Morriña <span>· Estadística</span></div>
+  <div class="nav-right">
+    <div class="sync-status">
+      <div class="sync-dot" id="syncDot"></div>
+      <span id="syncLabel">Sin configurar</span>
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="toggleGHPanel()">⚙ GitHub</button>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-label">Control de ventas</div>
+  <div class="hero-title">Proyecto Morriña</div>
+  <div class="hero-sub">Estadística actualizada en tiempo real · sincronizada con GitHub</div>
+</div>
+
+<div class="container">
+
+  <!-- GitHub config -->
+  <div class="gh-panel" id="ghPanel" style="display:none">
+    <div class="gh-panel-title">Configuración de sincronización con GitHub</div>
+    <div class="gh-panel-desc">
+      Los datos se guardan como un archivo <code>data.json</code> en tu repositorio de GitHub.<br>
+      Crea un <strong>Personal Access Token</strong> en GitHub → Settings → Developer settings → Fine-grained tokens, con permiso de escritura en <em>Contents</em> del repo.
+    </div>
+    <div class="gh-fields">
+      <div class="gh-field">
+        <label class="gh-label">Usuario GitHub</label>
+        <input class="gh-input" id="ghUser" type="text" placeholder="carlosperezzz" autocomplete="off">
+      </div>
+      <div class="gh-field">
+        <label class="gh-label">Repositorio</label>
+        <input class="gh-input" id="ghRepo" type="text" placeholder="morrina-stats" autocomplete="off">
+      </div>
+      <div class="gh-field">
+        <label class="gh-label">Ruta del archivo</label>
+        <input class="gh-input" id="ghPath" type="text" placeholder="data.json" autocomplete="off">
+      </div>
+      <div class="gh-field">
+        <label class="gh-label">Personal Access Token</label>
+        <input class="gh-input" id="ghToken" type="password" placeholder="github_pat_..." autocomplete="off">
+      </div>
+    </div>
+    <div class="gh-actions">
+      <button class="btn btn-primary" onclick="saveGHConfig()">Guardar configuración</button>
+      <button class="btn btn-secondary" onclick="loadFromGitHub()">↓ Cargar datos de GitHub</button>
+      <button class="btn btn-secondary" onclick="pushToGitHub()">↑ Subir datos ahora</button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid" id="kpis"></div>
+
+  <!-- Tabla ventas -->
+  <div class="section-header" style="margin-bottom:16px">
+    <div class="section-title">Ventas por libro</div>
+    <div class="section-note">KU equiv. = REDOND(páginas KU ÷ páginas libro, 0)</div>
+  </div>
+  <div class="table-wrap" style="margin-bottom:32px">
+    <table>
+      <thead>
+        <tr>
+          <th rowspan="2">Libro</th>
+          <th>Amazon<br>Direct</th>
+          <th>Físico<br>Web/KNP</th>
+          <th>Web</th>
+          <th>Páginas KU</th>
+          <th>KU equiv.</th>
+          <th class="th-sep">Total</th>
+          <th>% total</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Tabla reseñas -->
+  <div class="section-header" style="margin-bottom:16px">
+    <div class="section-title">Reseñas Amazon</div>
+  </div>
+  <div class="table-wrap" style="margin-bottom:32px">
+    <table>
+      <thead>
+        <tr>
+          <th>Libro</th>
+          <th>Reseñas</th>
+          <th>Valoración</th>
+          <th>Estrellas</th>
+        </tr>
+      </thead>
+      <tbody id="reviewBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Divisores -->
+  <div class="divisors-wrap">
+    <div class="divisors-title">Divisor KU equiv. · páginas por libro</div>
+    <div class="divisors-grid" id="divisorsGrid"></div>
+  </div>
+
+  <div class="footer-row">
+    <span class="footnote">Los datos se sincronizan automáticamente con GitHub tras cada cambio.</span>
+    <button class="btn btn-secondary btn-sm" onclick="exportCSV()">↓ Exportar CSV</button>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Defaults ────────────────────────────────────────────────────────────────
+const DEFAULTS = [
+  { titulo:"Morriña",            amazon:178, fisico:77, web:1, kuPag:22619, kuDiv:260, resenas:72,  valoracion:4.3 },
+  { titulo:"Orballo",            amazon:54,  fisico:7,  web:1, kuPag:10593, kuDiv:290, resenas:35,  valoracion:4.7 },
+  { titulo:"Marusía",           amazon:12,  fisico:0,  web:2, kuPag:2282,  kuDiv:269, resenas:6,   valoracion:5.0 },
+  { titulo:"El faro y la brisa", amazon:2,   fisico:43, web:0, kuPag:2204,  kuDiv:147, resenas:13,  valoracion:4.5 },
+  { titulo:"Lo que la marea",    amazon:11,  fisico:0,  web:0, kuPag:189,   kuDiv:45,  resenas:5,   valoracion:4.8 },
+  { titulo:"La sombra del faro", amazon:1,   fisico:0,  web:0, kuPag:32,    kuDiv:38,  resenas:1,   valoracion:5.0 },
+];
+
+// ── Estado ──────────────────────────────────────────────────────────────────
+let data = loadLocal();
+let ghConfig = loadGHConfig();
+let syncTimer = null;
+let fileSHA = null; // SHA del archivo en GitHub para actualizaciones
+
+function loadLocal() {
+  try { const s = localStorage.getItem('morrina_v3'); if(s) return JSON.parse(s); } catch(e){}
+  return DEFAULTS.map(d=>({...d}));
+}
+function saveLocal() {
+  localStorage.setItem('morrina_v3', JSON.stringify(data));
+}
+function loadGHConfig() {
+  try { const s = localStorage.getItem('morrina_gh'); if(s) return JSON.parse(s); } catch(e){}
+  return { user:'', repo:'', path:'data.json', token:'' };
+}
+function saveGHConfigLS() {
+  localStorage.setItem('morrina_gh', JSON.stringify(ghConfig));
+}
+
+// ── Cálculos ─────────────────────────────────────────────────────────────────
+// Sin decimales: ROUND(...,0) → Math.round
+function kuEquiv(row) {
+  if (!row.kuDiv || row.kuDiv===0) return 0;
+  return Math.round(row.kuPag / row.kuDiv);
+}
+function totalRow(row) { return row.amazon + row.fisico + row.web + kuEquiv(row); }
+function grandTotal()  { return data.reduce((s,r)=>s+totalRow(r), 0); }
+function totalResenas(){ return data.reduce((s,r)=>s+r.resenas, 0); }
+function avgVal() {
+  const n = data.filter(r=>r.valoracion>0);
+  if(!n.length) return 0;
+  return +(n.reduce((s,r)=>s+r.valoracion,0)/n.length).toFixed(2);
+}
+function stars(v){ const f=Math.round(v); return '★'.repeat(Math.min(f,5))+'☆'.repeat(Math.max(0,5-f)); }
+function fmt(n){ return Math.round(n).toLocaleString('es'); }
+
+// ── Render KPIs ──────────────────────────────────────────────────────────────
+function renderKPIs() {
+  const gt=grandTotal(), res=totalResenas(), av=avgVal();
+  const sumAmazon=data.reduce((s,r)=>s+r.amazon,0);
+  const sumKU=data.reduce((s,r)=>s+r.kuPag,0);
+  const top=data.reduce((b,r)=>totalRow(r)>totalRow(b)?r:b,data[0]);
+  document.getElementById('kpis').innerHTML=`
+    <div class="kpi"><div class="kpi-val">${fmt(gt)}</div><div class="kpi-lbl">Unidades totales</div><div class="kpi-sub">incl. KU equiv.</div></div>
+    <div class="kpi"><div class="kpi-val">${sumAmazon}</div><div class="kpi-lbl">Amazon Direct</div><div class="kpi-sub">${gt>0?(sumAmazon/gt*100).toFixed(0):0}% del total</div></div>
+    <div class="kpi"><div class="kpi-val">${sumKU.toLocaleString('es')}</div><div class="kpi-lbl">Páginas KU</div><div class="kpi-sub">leídas en Kindle Unlimited</div></div>
+    <div class="kpi"><div class="kpi-val">${res}</div><div class="kpi-lbl">Reseñas totales</div><div class="kpi-sub">${stars(av)} ${av} de media</div></div>
+    <div class="kpi"><div class="kpi-val" style="font-size:20px;padding-top:6px">${top.titulo.split(' ')[0]}</div><div class="kpi-lbl">Más vendido</div><div class="kpi-sub">${fmt(totalRow(top))} unidades</div></div>
+  `;
+}
+
+// ── Render tabla ventas ───────────────────────────────────────────────────────
+function renderSales() {
+  const gt=grandTotal();
+  const tbody=document.getElementById('tableBody');
+  tbody.innerHTML='';
+  data.forEach((row,i)=>{
+    const ku=kuEquiv(row), tot=totalRow(row);
+    const pct=gt>0?(tot/gt*100).toFixed(1):'0.0';
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${row.titulo}</td>
+      <td><input type="number" min="0" data-i="${i}" data-f="amazon" value="${row.amazon}"></td>
+      <td><input type="number" min="0" data-i="${i}" data-f="fisico" value="${row.fisico}"></td>
+      <td><input type="number" min="0" data-i="${i}" data-f="web"    value="${row.web}"></td>
+      <td><input type="number" min="0" class="wide" data-i="${i}" data-f="kuPag" value="${row.kuPag}"></td>
+      <td class="calc">${ku}</td>
+      <td class="total-val th-sep">${fmt(tot)}</td>
+      <td class="pct-cell">${pct}%<div class="bar"><div class="bar-fill" style="width:${Math.min(parseFloat(pct),100)}%"></div></div></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  // Fila total
+  const sumA=data.reduce((s,r)=>s+r.amazon,0);
+  const sumF=data.reduce((s,r)=>s+r.fisico,0);
+  const sumW=data.reduce((s,r)=>s+r.web,0);
+  const sumKP=data.reduce((s,r)=>s+r.kuPag,0);
+  const sumKU=data.reduce((s,r)=>s+kuEquiv(r),0);
+  const tr=document.createElement('tr'); tr.className='row-total';
+  tr.innerHTML=`<td>Total</td><td class="total-val">${sumA}</td><td class="total-val">${sumF}</td><td class="total-val">${sumW}</td><td class="total-val">${sumKP.toLocaleString('es')}</td><td class="total-val">${fmt(sumKU)}</td><td class="total-val th-sep">${fmt(grandTotal())}</td><td class="pct-cell">100%</td>`;
+  tbody.appendChild(tr);
+}
+
+// ── Render tabla reseñas ──────────────────────────────────────────────────────
+function renderReviews() {
+  const tbody=document.getElementById('reviewBody');
+  tbody.innerHTML='';
+  data.forEach((row,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${row.titulo}</td>
+      <td><input type="number" min="0" data-i="${i}" data-f="resenas" value="${row.resenas}"></td>
+      <td><input type="number" min="0" max="5" step="0.1" class="narrow" data-i="${i}" data-f="valoracion" value="${row.valoracion}"></td>
+      <td><span class="stars">${stars(row.valoracion)}</span>${row.valoracion}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  // Total
+  const av=avgVal(), res=totalResenas();
+  const tr=document.createElement('tr'); tr.className='row-total';
+  tr.innerHTML=`<td>Total / Media</td><td class="total-val">${res}</td><td class="total-val">${av}</td><td><span class="stars">${stars(av)}</span>${av}</td>`;
+  tbody.appendChild(tr);
+}
+
+// ── Render divisores ──────────────────────────────────────────────────────────
+function renderDivisors() {
+  const grid=document.getElementById('divisorsGrid');
+  grid.innerHTML='';
+  data.forEach((row,i)=>{
+    const item=document.createElement('div'); item.className='div-item';
+    item.innerHTML=`<span class="div-label">${row.titulo}</span><input type="number" min="1" data-i="${i}" value="${row.kuDiv}" style="width:70px">`;
+    grid.appendChild(item);
+  });
+  grid.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('input',()=>{ data[+inp.dataset.i].kuDiv=parseFloat(inp.value)||1; onDataChange(); });
+  });
+}
+
+// ── Render principal ──────────────────────────────────────────────────────────
+function render() {
+  renderKPIs();
+  renderSales();
+  renderReviews();
+  renderDivisors();
+  attachInputListeners();
+}
+
+function attachInputListeners() {
+  document.querySelectorAll('#tableBody input, #reviewBody input').forEach(inp=>{
+    inp.addEventListener('input',()=>{
+      data[+inp.dataset.i][inp.dataset.f]=parseFloat(inp.value)||0;
+      onDataChange();
+    });
+  });
+}
+
+// ── Cambio de datos ───────────────────────────────────────────────────────────
+function onDataChange() {
+  saveLocal();
+  render();
+  // Debounce sync: espera 1.5s de inactividad antes de subir
+  clearTimeout(syncTimer);
+  if(ghConfig.user && ghConfig.token) {
+    setSyncStatus('loading','Guardando…');
+    syncTimer = setTimeout(pushToGitHub, 1500);
+  }
+}
+
+// ── GitHub API ────────────────────────────────────────────────────────────────
+function ghHeaders() {
+  return {
+    'Authorization': `Bearer ${ghConfig.token}`,
+    'Content-Type': 'application/json',
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+}
+function ghURL() {
+  return `https://api.github.com/repos/${ghConfig.user}/${ghConfig.repo}/contents/${ghConfig.path}`;
+}
+
+async function loadFromGitHub() {
+  if(!ghConfig.user||!ghConfig.token){ toast('Configura primero GitHub'); return; }
+  setSyncStatus('loading','Cargando…');
+  try {
+    const r=await fetch(ghURL(), { headers: ghHeaders() });
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const json=await r.json();
+    fileSHA=json.sha;
+    const decoded=JSON.parse(atob(json.content.replace(/\n/g,'')));
+    data=decoded;
+    saveLocal();
+    render();
+    setSyncStatus('ok','Sincronizado');
+    toast('✓ Datos cargados de GitHub');
+  } catch(e) {
+    setSyncStatus('err','Error al cargar');
+    toast('Error: '+e.message);
+  }
+}
+
+async function pushToGitHub() {
+  if(!ghConfig.user||!ghConfig.token) return;
+  setSyncStatus('loading','Subiendo…');
+  try {
+    // Obtener SHA actual (por si cambió desde otro dispositivo)
+    if(!fileSHA){
+      const r=await fetch(ghURL(), { headers: ghHeaders() });
+      if(r.ok){ const j=await r.json(); fileSHA=j.sha; }
+    }
+    const content=btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+    const body={ message:'update stats', content };
+    if(fileSHA) body.sha=fileSHA;
+    const r=await fetch(ghURL(), { method:'PUT', headers:ghHeaders(), body:JSON.stringify(body) });
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const json=await r.json();
+    fileSHA=json.content.sha;
+    setSyncStatus('ok', new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}));
+    toast('✓ Datos guardados en GitHub');
+  } catch(e) {
+    setSyncStatus('err','Error al guardar');
+    toast('Error al subir: '+e.message);
+  }
+}
+
+// ── Configuración GitHub ──────────────────────────────────────────────────────
+function toggleGHPanel() {
+  const p=document.getElementById('ghPanel');
+  const visible=p.style.display!=='none';
+  p.style.display=visible?'none':'block';
+  if(!visible) {
+    document.getElementById('ghUser').value=ghConfig.user||'';
+    document.getElementById('ghRepo').value=ghConfig.repo||'';
+    document.getElementById('ghPath').value=ghConfig.path||'data.json';
+    document.getElementById('ghToken').value=ghConfig.token||'';
+  }
+}
+
+function saveGHConfig() {
+  ghConfig.user  = document.getElementById('ghUser').value.trim();
+  ghConfig.repo  = document.getElementById('ghRepo').value.trim();
+  ghConfig.path  = document.getElementById('ghPath').value.trim()||'data.json';
+  ghConfig.token = document.getElementById('ghToken').value.trim();
+  fileSHA=null;
+  saveGHConfigLS();
+  if(ghConfig.user&&ghConfig.token){
+    setSyncStatus('ok','Configurado');
+    toast('✓ Configuración guardada');
+    loadFromGitHub();
+  } else {
+    setSyncStatus('','Sin configurar');
+    toast('Rellena usuario, repo y token');
+  }
+}
+
+// ── Sync status ───────────────────────────────────────────────────────────────
+function setSyncStatus(state, label) {
+  const dot=document.getElementById('syncDot');
+  const lbl=document.getElementById('syncLabel');
+  dot.className='sync-dot'+(state?' '+state:'');
+  lbl.textContent=label;
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t);
+  t._t=setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ── Export CSV ────────────────────────────────────────────────────────────────
+function exportCSV() {
+  const gt=grandTotal();
+  const h='Libro,Amazon,Físico,Web,Páginas KU,KU div.,KU equiv.,Total,% Total,Reseñas,Valoración\n';
+  const rows=data.map(r=>{
+    const tot=totalRow(r);
+    return [r.titulo,r.amazon,r.fisico,r.web,r.kuPag,r.kuDiv,kuEquiv(r),Math.round(tot),gt>0?(tot/gt*100).toFixed(1)+'%':'0%',r.resenas,r.valoracion].join(',');
+  }).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([h+rows],{type:'text/csv;charset=utf-8;'}));
+  a.download='estadistica_morrina.csv'; a.click();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+render();
+if(ghConfig.user&&ghConfig.token){
+  setSyncStatus('ok','Configurado');
+  loadFromGitHub();
+} else {
+  setSyncStatus('','Sin configurar');
+}
+</script>
+</body>
+</html>
